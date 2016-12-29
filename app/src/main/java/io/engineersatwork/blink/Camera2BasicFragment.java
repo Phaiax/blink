@@ -240,8 +240,10 @@ public class Camera2BasicFragment extends Fragment
     private long mTimeLastFrame;
     private long mTimeAllFrames;
     private int mNumFrames;
-    private int mEstimatedJitterSum;
+    private long mEstimatedJitterSum;
     private double mEstimatedJitter;
+    private double mMinJitter = 1000;
+    private double mMaxJitter = 0;
 
     /**
      * This a callback object for the {@link ImageReader}. "onImageAvailable" will be called when a
@@ -261,7 +263,7 @@ public class Camera2BasicFragment extends Fragment
                 return;
             }
 
-            long timeCurrentFrame = SystemClock.elapsedRealtime();
+            long timeCurrentFrame = i.getTimestamp() / 1000 / 1000;
             if (mTimeLastFrame == 0) {
                 mTimeLastFrame = timeCurrentFrame;
             } else {
@@ -270,12 +272,19 @@ public class Camera2BasicFragment extends Fragment
                 mTimeLastFrame = timeCurrentFrame;
                 mNumFrames += 1;
                 double meanTimespanPerFrame = ((double) mTimeAllFrames) / (double) mNumFrames;
-                double meanFPS = 1.0 / (((double) meanTimespanPerFrame) / 1000);
+                double meanFPS = 1000.0 / meanTimespanPerFrame;
                 Log.d("abcde", String.format("Mean FPS: %f", meanFPS));
+                double currentJitter = Math.abs(meanTimespanPerFrame - timespanCurrent);
                 if (mNumFrames > 100) {
-                    mEstimatedJitterSum += Math.abs(meanTimespanPerFrame - timespanCurrent);
+                    mEstimatedJitterSum += currentJitter;
                     mEstimatedJitter = ((double) mEstimatedJitterSum) / (((double) mNumFrames) - 100.0);
-                    Log.d("abcde", String.format("Estimate jitter: %f", mEstimatedJitter));
+                    mMaxJitter = Math.max(currentJitter, mMaxJitter);
+                    mMinJitter = Math.min(currentJitter, mMinJitter);
+                    Log.d("abcde", String.format("Estimate jitter: %f, MIN: %f, MAX: %f", mEstimatedJitter, mMinJitter, mMaxJitter));
+                    if (mNumFrames % 100 == 0) {
+                        mMinJitter = 1000;
+                        mMaxJitter = 0;
+                    }
                 }
             }
 
