@@ -46,6 +46,7 @@ import android.media.ImageReader;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.SystemClock;
 import android.support.annotation.NonNull;
 // import android.support.v13.app.FragmentCompat;
 import android.support.v13.app.FragmentCompat;
@@ -236,6 +237,12 @@ public class Camera2BasicFragment extends Fragment
      */
     private File mFile;
 
+    private long mTimeLastFrame;
+    private long mTimeAllFrames;
+    private int mNumFrames;
+    private int mEstimatedJitterSum;
+    private double mEstimatedJitter;
+
     /**
      * This a callback object for the {@link ImageReader}. "onImageAvailable" will be called when a
      * still image is ready to be saved.
@@ -247,11 +254,36 @@ public class Camera2BasicFragment extends Fragment
         public void onImageAvailable(ImageReader reader) {
             // mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile));
 
+
+
             Image i = reader.acquireLatestImage();
+            if (i == null) {
+                return;
+            }
+
+            long timeCurrentFrame = SystemClock.elapsedRealtime();
+            if (mTimeLastFrame == 0) {
+                mTimeLastFrame = timeCurrentFrame;
+            } else {
+                long timespanCurrent = timeCurrentFrame - mTimeLastFrame;
+                mTimeAllFrames += timespanCurrent;
+                mTimeLastFrame = timeCurrentFrame;
+                mNumFrames += 1;
+                double meanTimespanPerFrame = ((double) mTimeAllFrames) / (double) mNumFrames;
+                double meanFPS = 1.0 / (((double) meanTimespanPerFrame) / 1000);
+                Log.d("abcde", String.format("Mean FPS: %f", meanFPS));
+                if (mNumFrames > 100) {
+                    mEstimatedJitterSum += Math.abs(meanTimespanPerFrame - timespanCurrent);
+                    mEstimatedJitter = ((double) mEstimatedJitterSum) / (((double) mNumFrames) - 100.0);
+                    Log.d("abcde", String.format("Estimate jitter: %f", mEstimatedJitter));
+                }
+            }
 
             //i.getPlanes()[0].getBuffer().remaining()
-            Log.d("abcde", String.format("Got image: remaining %d", i.getPlanes()[0].getBuffer().remaining()));
-            Log.d("abcde", String.format("Got image: [500] %d", i.getPlanes()[0].getBuffer().getInt(500)));
+            if (i.getPlanes().length > 0) {
+//                Log.d("abcde", String.format("Got image: remaining %d", i.getPlanes()[0].getBuffer().remaining()));
+//                Log.d("abcde", String.format("Got image: [500] %d", i.getPlanes()[0].getBuffer().getInt(500)));
+            }
             i.close();
         }
 
@@ -695,8 +727,8 @@ public class Camera2BasicFragment extends Fragment
 
             // We set up a CaptureRequest.Builder with the output Surface.
             mPreviewRequestBuilder
-                    = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
-            mPreviewRequestBuilder.addTarget(surface);
+                    = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
+            //mPreviewRequestBuilder.addTarget(surface);
             mPreviewRequestBuilder.addTarget(mImageReader.getSurface());
 
             // Here, we create a CameraCaptureSession for camera preview.
