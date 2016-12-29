@@ -52,6 +52,7 @@ import android.support.annotation.NonNull;
 import android.support.v13.app.FragmentCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.util.Range;
 import android.util.Size;
 import android.util.SparseIntArray;
 import android.view.LayoutInflater;
@@ -560,11 +561,21 @@ public class Camera2BasicFragment extends Fragment
                 }
 
                 // For still image captures, we use the largest available size.
-                Size largest = Collections.max(
-                        Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)),
+                Size smallest = Collections.min(
+                        Arrays.asList(map.getOutputSizes(ImageFormat.YUV_420_888)),
                         new CompareSizesByArea());
-                mImageReader = ImageReader.newInstance(largest.getWidth(), largest.getHeight(),
-                        ImageFormat.YUV_420_888, /*maxImages*/2);
+                for (Size s : map.getHighSpeedVideoSizes()) {
+                    Log.e("abcde", "HighSpeed" + s.toString());
+                }
+                for (Size s : map.getOutputSizes(ImageFormat.YUV_420_888)) {
+                    Log.e("abcde", "getOutputSizes yuv420 " + s.toString());
+                }
+                for (Range<Integer> s : map.getHighSpeedVideoFpsRanges()) {
+                    Log.e("abcde", "getHighSpeedVideoFpsRanges " + s.getLower().toString() + " .. " + s.getUpper().toString());
+                }
+                Log.e("abcde", "Use size: " + smallest.toString());
+                mImageReader = ImageReader.newInstance(smallest.getWidth(), smallest.getHeight(),
+                        ImageFormat.YUV_420_888, /*maxImages*/10);
                 mImageReader.setOnImageAvailableListener(
                         mOnImageAvailableListener, mBackgroundHandler);
 
@@ -618,7 +629,7 @@ public class Camera2BasicFragment extends Fragment
                 // garbage capture data.
                 mPreviewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class),
                         rotatedPreviewWidth, rotatedPreviewHeight, maxPreviewWidth,
-                        maxPreviewHeight, largest);
+                        maxPreviewHeight, smallest);
 
                 // We fit the aspect ratio of TextureView to the size of preview we picked.
                 int orientation = getResources().getConfiguration().orientation;
