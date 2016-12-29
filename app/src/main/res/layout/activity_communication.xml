@@ -47,8 +47,8 @@
         </LinearLayout>
 
         <fragment
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="182dp"
+            android:layout_height="344dp"
             android:name="io.engineersatwork.blink.Camera2BasicFragment"
             android:id="@+id/fragment" />
     </FrameLayout>
