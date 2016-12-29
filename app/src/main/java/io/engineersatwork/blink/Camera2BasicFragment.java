@@ -186,6 +186,8 @@ public class Camera2BasicFragment extends Fragment
      */
     private Size mPreviewSize;
 
+    private Rect mCropRect;
+
     /**
      * {@link CameraDevice.StateCallback} is called when {@link CameraDevice} changes its state.
      */
@@ -265,6 +267,12 @@ public class Camera2BasicFragment extends Fragment
                 return;
             }
 
+            //debugInfo(i);
+
+            i.close();
+        }
+
+        private void debugInfo(Image i) {
             long timeCurrentFrame = i.getTimestamp() / 1000 / 1000;
             if (mTimeLastFrame == 0) {
                 mTimeLastFrame = timeCurrentFrame;
@@ -295,7 +303,7 @@ public class Camera2BasicFragment extends Fragment
 //                Log.d("abcde", String.format("Got image: remaining %d", i.getPlanes()[0].getBuffer().remaining()));
 //                Log.d("abcde", String.format("Got image: [500] %d", i.getPlanes()[0].getBuffer().getInt(500)));
             }
-            i.close();
+
         }
 
     };
@@ -561,22 +569,16 @@ public class Camera2BasicFragment extends Fragment
                     continue;
                 }
 
-                // For still image captures, we use the largest available size.
-                Size smallest = Collections.min(
-                        Arrays.asList(map.getOutputSizes(ImageFormat.YUV_420_888)),
-                        new CompareSizesByArea());
-                for (Size s : map.getHighSpeedVideoSizes()) {
-                    Log.e("abcde", "HighSpeed" + s.toString());
-                }
-                for (Size s : map.getOutputSizes(ImageFormat.YUV_420_888)) {
-                    Log.e("abcde", "getOutputSizes yuv420 " + s.toString());
-                }
-                for (Range<Integer> s : map.getHighSpeedVideoFpsRanges()) {
-                    Log.e("abcde", "getHighSpeedVideoFpsRanges " + s.getLower().toString() + " .. " + s.getUpper().toString());
-                }
+                // For processing images we crop a small area from the whole camera image to speedup
+                List<Size> supportedSizes = Arrays.asList(map.getOutputSizes(ImageFormat.YUV_420_888));
+                Collections.sort(supportedSizes, new CompareSizesByArea());
+                Size smallest = supportedSizes.get(0);
                 Log.e("abcde", "Use size: " + smallest.toString());
+                mCropRect = new Rect(/*left*/ 0, /*top*/ 0, /*right*/ smallest.getWidth(), /*bottom*/ smallest.getHeight());
+
+                // The image reader uses the cropped size
                 mImageReader = ImageReader.newInstance(smallest.getWidth(), smallest.getHeight(),
-                        ImageFormat.YUV_420_888, /*maxImages*/10);
+                        ImageFormat.YUV_420_888, /*maxImages*/2);
                 mImageReader.setOnImageAvailableListener(
                         mOnImageAvailableListener, mBackgroundHandler);
 
@@ -750,7 +752,7 @@ public class Camera2BasicFragment extends Fragment
             mPreviewRequestBuilder
                     = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_RECORD);
             //mPreviewRequestBuilder.addTarget(surface);
-            mPreviewRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, new Rect(0, 0, 176, 144));
+            mPreviewRequestBuilder.set(CaptureRequest.SCALER_CROP_REGION, mCropRect);
             mPreviewRequestBuilder.addTarget(mImageReader.getSurface());
 
             // Here, we create a CameraCaptureSession for camera preview.
