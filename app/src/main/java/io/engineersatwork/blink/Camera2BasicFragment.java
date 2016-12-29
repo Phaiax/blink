@@ -247,10 +247,12 @@ public class Camera2BasicFragment extends Fragment
         public void onImageAvailable(ImageReader reader) {
             // mBackgroundHandler.post(new ImageSaver(reader.acquireNextImage(), mFile));
 
-            //Image i = reader.acquireNextImage();
-            Log.d("abcde", "Got image");
-            //reader.close();
+            Image i = reader.acquireLatestImage();
 
+            //i.getPlanes()[0].getBuffer().remaining()
+            Log.d("abcde", String.format("Got image: remaining %d", i.getPlanes()[0].getBuffer().remaining()));
+            Log.d("abcde", String.format("Got image: [500] %d", i.getPlanes()[0].getBuffer().getInt(500)));
+            i.close();
         }
 
     };
